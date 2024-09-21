@@ -1,10 +1,9 @@
 #include "L1Cache.h"
 
-uint8_t L1Cache[L1_SIZE];
-uint8_t L2Cache[L2_SIZE];
+uint8_t L1Cache[L1_SIZE]; /* [0] + [64] + [128] */
 uint8_t DRAM[DRAM_SIZE];
 uint32_t time;
-Cache SimpleCache;
+Cache CacheInfo;
 
 /**************** Time Manipulation ***************/
 void resetTime() { time = 0; }
@@ -30,40 +29,50 @@ void accessDRAM(uint32_t address, uint8_t *data, uint32_t mode) {
 
 /*********************** L1 cache *************************/
 
-void initCache() { SimpleCache.init = 0; }
+void initCache() { 
+    CacheInfo.init = 0;
+  }
 
 void accessL1(uint32_t address, uint8_t *data, uint32_t mode) {
 
-  uint32_t index, Tag, MemAddress;
+  uint32_t index, Tag, AddressMemory, offset;
   uint8_t TempBlock[BLOCK_SIZE];
 
   /* init cache */
-  if (SimpleCache.init == 0) {
-    SimpleCache.line.Valid = 0;
-    SimpleCache.init = 1;
+  if (CacheInfo.init == 0) {
+    
+    for (int i = 0; i < L1_LINES - 1; i++)
+    {
+      CacheInfo.line[i].Valid = 0;
+    }
+
+    CacheInfo.init = 1;
   }
+  
+  // tirar os bits do offset
+  AddressMemory = address >> 6; // Log2(BLOCK_SIZE) = 6 
 
-  CacheLine *Line = &SimpleCache.line;
+  offset = address & (BLOCK_SIZE - 1); // mask is 0011 1111
+  index = AddressMemory & ((L1_SIZE / BLOCK_SIZE) - 1); // mask is the number of lines (256) (1111 1111)
+  Tag = address >> 14; // log2(L1_SIZE) = 14 OR 8 + 6 = 14
 
-  Tag = address >> 3; // Why do I do this?
-
-  MemAddress = address >> 3; // again this....!
-  MemAddress = MemAddress << 3; // address of the block in memory
+  CacheLine *Line = &CacheInfo.line[index];
 
   /* access Cache*/
 
   if (!Line->Valid || Line->Tag != Tag) {         // if block not present - miss
-    accessDRAM(MemAddress, TempBlock, MODE_READ); // get new block from DRAM
+    accessDRAM(AddressMemory, TempBlock, MODE_READ); // get new block from DRAM
 
     if ((Line->Valid) && (Line->Dirty)) { // line has dirty block
-      MemAddress = Line->Tag << 3;        // get address of the block in memory
-      accessDRAM(MemAddress, &(L1Cache[0]), MODE_WRITE); // then write back old block
+      AddressMemory = Line->Tag << 6;        // get address of the block in memory
+      accessDRAM(AddressMemory, &(L1Cache[0]), MODE_WRITE); // then write back old block
     }
 
     memcpy(&(L1Cache[0]), TempBlock,
            BLOCK_SIZE); // copy new block to cache line
     Line->Valid = 1;
     Line->Tag = Tag;
+    Line->Index = index;
     Line->Dirty = 0;
   } // if miss, then replaced with the correct block
 
