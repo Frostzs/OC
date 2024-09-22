@@ -7,6 +7,7 @@
 #define L1_SIZE (256 * BLOCK_SIZE)      // in bytes
 #define L2_SIZE (512 * BLOCK_SIZE)    // in bytes
 #define L1_LINES (L1_SIZE / BLOCK_SIZE)
+#define L2_LINES (L2_SIZE / BLOCK_SIZE)
 
 
 #define MODE_READ 1

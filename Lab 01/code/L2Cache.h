@@ -1,5 +1,5 @@
-#ifndef L1CACHE_H
-#define L1CACHE_H
+#ifndef L2CACHE_H
+#define L2CACHE_H
 
 #include <stdio.h>
 #include <stdlib.h>
