@@ -41,7 +41,6 @@ void initCache() {
 void accessL1(uint32_t address, uint8_t *data, uint32_t mode) {
 
   uint32_t index, Tag, AddressMemory, offset;
-  uint8_t TempBlock[BLOCK_SIZE];
 
   /* init cache */
   if (CacheInfoL1.init == 0) {
@@ -68,10 +67,16 @@ void accessL1(uint32_t address, uint8_t *data, uint32_t mode) {
   /* access Cache*/
 
   if (!Line->Valid || Line->Tag != Tag) {         // if block not present - miss
+    
+    if ((Line->Valid) && (Line->Dirty))
+    {                                                                                   // line has dirty block
+      AddressMemory = Line->Tag << 6;                                                   // get address of the block in memory
+      accessDRAM(AddressMemory, &(L1Cache[index * BLOCK_SIZE + offset]), MODE_WRITE); // then write back old block
+    }
+
+    
     accessL2(index, offset, AddressMemory, address, data, mode);
 
-    memcpy(&(L1Cache[index*BLOCK_SIZE + offset]), TempBlock,
-           BLOCK_SIZE); // copy new block to cache line
     Line->Valid = 1;
     Line->Tag = Tag;
     Line->Index = index;
@@ -89,6 +94,8 @@ void accessL1(uint32_t address, uint8_t *data, uint32_t mode) {
     Line->Dirty = 1;
   }
 }
+
+// ------------------------------------------------------------------------------------------------------------------------------- //
 
 void accessL2(uint32_t indexL1, uint32_t offset, uint32_t AddressMemory, uint32_t address, uint8_t *data, uint32_t mode) {
     uint32_t indexL2, TagL2;
@@ -113,6 +120,10 @@ void accessL2(uint32_t indexL1, uint32_t offset, uint32_t AddressMemory, uint32_
 
         memcpy(&(L2Cache[indexL2 * BLOCK_SIZE + offset]), TempBlock,
                BLOCK_SIZE); // copy new block to cache line
+        memcpy(&(L1Cache[indexL1 * BLOCK_SIZE + offset]), TempBlock,
+               BLOCK_SIZE); // copy new block to cache line
+
+        time += L2_WRITE_TIME;
         Line->Valid = 1;
         Line->Tag = TagL2;
         Line->Index = indexL2;
@@ -122,8 +133,7 @@ void accessL2(uint32_t indexL1, uint32_t offset, uint32_t AddressMemory, uint32_
 
     if (mode == MODE_READ)
     { // read data from cache line
-        memcpy(&(L1Cache[indexL1 * BLOCK_SIZE + offset]), &(L2Cache[indexL2 * BLOCK_SIZE + offset]), WORD_SIZE);
-        memcpy(data, &(L1Cache[indexL1*BLOCK_SIZE + offset]), WORD_SIZE);
+        memcpy(data, &(L2Cache[indexL2 * BLOCK_SIZE + offset]), WORD_SIZE);
         time += L2_READ_TIME;
     }
 
