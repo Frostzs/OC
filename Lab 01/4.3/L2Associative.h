@@ -33,7 +33,7 @@ typedef struct Cache {
 } Cache;
 
 typedef struct Set{
-  int8_t lines_set[2];
+  uint8_t lines_set[2 * BLOCK_SIZE];
 } Set;
 
 /*********************** Interfaces *************************/

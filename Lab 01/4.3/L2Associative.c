@@ -1,7 +1,7 @@
 #include "L2Associative.h"
 
 uint8_t L1Cache[L1_SIZE]; /* [0] + [64] + [128] + ... + [16320] */
-Set L2Cache[L2_SIZE/2]; /* [0] + [64] + [128] + ... + [32704]*/
+Set L2Cache[L2_LINES/2]; /* [0] + [64] + [128] + ... + [32704]*/
 uint8_t DRAM[DRAM_SIZE];
 uint32_t time;
 Cache CacheInfoL1;
@@ -114,37 +114,76 @@ void accessL2(uint32_t indexL1, uint32_t offset, uint32_t AddressMemory, uint32_
     { // if block not present - miss
 
         accessDRAM(AddressMemory, TempBlock, MODE_READ); // get new block from DRAM
-        if(Line->Valid )
-        if ((Line->Valid) && (Line->Dirty))
+        
+        if ((Line->Valid) && (Line->Dirty) && (!Line->Timebit))
         {                                                                                   // line has dirty block
-            AddressMemory = Line->Tag << 6;                                                 // get address of the block in memory
-            accessDRAM(AddressMemory, &(L2Cache[indexL2 * BLOCK_SIZE + offset]), MODE_WRITE); // then write back old block
+          AddressMemory = Line->Tag << 6;                                                 // get address of the block in memory
+          accessDRAM(AddressMemory, &(L2Cache[indexL2].lines_set[offset]), MODE_WRITE); // then write back old block
         }
+        else if ((Line2->Valid) && (Line2->Dirty) && (!Line2->Timebit))
+        {
+          AddressMemory = Line2->Tag << 6;
+          accessDRAM(AddressMemory, &(L2Cache[indexL2].lines_set[BLOCK_SIZE - 1 + offset]), MODE_WRITE);
+        }
+        
 
-        memcpy(&(L2Cache[indexL2 * BLOCK_SIZE + offset]), TempBlock,
+
+        if ((!Line->Valid) || (!Line->Timebit))
+        {  
+          memcpy(&(L2Cache[indexL2].lines_set[offset]), TempBlock,
+                BLOCK_SIZE); // copy new block to cache line
+          Line->Valid = 1;
+          Line->Tag = TagL2;
+          Line->Index = indexL2;
+          Line->Dirty = 0;
+          Line2->Timebit = 0;
+        }
+        else if ((!Line2->Valid) || (!Line2->Timebit))
+        {
+          memcpy(&(L2Cache[indexL2].lines_set[BLOCK_SIZE - 1 + offset]), TempBlock,
                BLOCK_SIZE); // copy new block to cache line
+          Line2->Valid = 1;
+          Line2->Tag = TagL2;
+          Line2->Index = indexL2;
+          Line2->Dirty = 0;
+          Line->Timebit = 0;
+        }
+        
+        
+        
         memcpy(&(L1Cache[indexL1 * BLOCK_SIZE + offset]), TempBlock,
                BLOCK_SIZE); // copy new block to cache line
 
         time += L2_WRITE_TIME;
-        Line->Valid = 1;
-        Line->Tag = TagL2;
-        Line->Index = indexL2;
-        Line->Dirty = 0;
     } // if miss, then replaced with the correct block
 
 
     if (mode == MODE_READ)
     { // read data from cache line
-        memcpy(data, &(L2Cache[indexL2 * BLOCK_SIZE + offset]), WORD_SIZE);
+      if (Line->Tag == TagL2)
+      {
+        memcpy(data, &(L2Cache[indexL2].lines_set[offset]), WORD_SIZE);
+      }
+      else if (Line2->Tag == TagL2)
+      {
+        memcpy(data, &(L2Cache[indexL2].lines_set[BLOCK_SIZE - 1 + offset]), WORD_SIZE);
+      }
         time += L2_READ_TIME;
     }
 
     if (mode == MODE_WRITE)
     { // write data from cache line
-        memcpy(&(L2Cache[indexL2 * BLOCK_SIZE + offset]), data, WORD_SIZE);
+        if (Line->Tag == TagL2)
+        {
+          memcpy(&(L2Cache[indexL2].lines_set[offset]), data, WORD_SIZE);
+          Line->Dirty = 1;
+        }
+        else if (Line2->Tag == TagL2)
+        {
+          memcpy(&(L2Cache[indexL2].lines_set[BLOCK_SIZE - 1 + offset]), data, WORD_SIZE);
+          Line2->Dirty = 1;
+        }
         time += L2_WRITE_TIME;
-        Line->Dirty = 1;
     }
 }
 
