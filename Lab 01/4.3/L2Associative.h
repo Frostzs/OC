@@ -24,6 +24,7 @@ typedef struct CacheLine {
   uint8_t Dirty;
   uint32_t Tag;
   uint32_t Index;
+  uint32_t Timestamp[2];
 } CacheLine;
 
 typedef struct Cache {

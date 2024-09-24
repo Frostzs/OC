@@ -101,8 +101,8 @@ void accessL2(uint32_t indexL1, uint32_t offset, uint32_t AddressMemory, uint32_
     uint32_t indexL2, TagL2;
     uint8_t TempBlock[BLOCK_SIZE];
 
-    indexL2 = AddressMemory & ((L2_SIZE / BLOCK_SIZE) - 1); // mask is the number of lines (512) (1 1111 1111)
-    TagL2 = address >> 15; // log2(L2_SIZE) = 15 OR 9 + 6 = 15
+    indexL2 = AddressMemory & ((L2_SIZE / BLOCK_SIZE * 2) - 1); // mask is the number of lines (256) (1111 1111)
+    TagL2 = address >> 14; // log2(L2_SIZE / 2) = 14 OR 8 + 6 = 14
 
     CacheLine *Line = &CacheInfoL2.line[indexL2];
 
