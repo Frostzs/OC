@@ -24,13 +24,17 @@ typedef struct CacheLine {
   uint8_t Dirty;
   uint32_t Tag;
   uint32_t Index;
-  uint32_t Timestamp[2];
+  uint8_t Timebit;
 } CacheLine;
 
 typedef struct Cache {
   uint32_t init;
   CacheLine line[L2_LINES];
 } Cache;
+
+typedef struct Set{
+  int8_t lines_set[2];
+} Set;
 
 /*********************** Interfaces *************************/
 

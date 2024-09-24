@@ -1,7 +1,7 @@
 #include "L2Associative.h"
 
 uint8_t L1Cache[L1_SIZE]; /* [0] + [64] + [128] + ... + [16320] */
-uint8_t L2Cache[L2_SIZE]; /* [0] + [64] + [128] + ... + [32704]*/
+Set L2Cache[L2_SIZE/2]; /* [0] + [64] + [128] + ... + [32704]*/
 uint8_t DRAM[DRAM_SIZE];
 uint32_t time;
 Cache CacheInfoL1;
@@ -51,6 +51,7 @@ void accessL1(uint32_t address, uint8_t *data, uint32_t mode) {
             CacheInfoL1.line[i].Valid = 0;
         }
         CacheInfoL2.line[i].Valid = 0;
+        CacheInfoL2.line[i].Timebit = 0;
     }
     CacheInfoL1.init = 1;
   }
@@ -81,6 +82,7 @@ void accessL1(uint32_t address, uint8_t *data, uint32_t mode) {
     Line->Tag = Tag;
     Line->Index = index;
     Line->Dirty = 0;
+  
   } // if miss, then replaced with the correct block
 
   if (mode == MODE_READ) {    // read data from cache line
@@ -105,13 +107,14 @@ void accessL2(uint32_t indexL1, uint32_t offset, uint32_t AddressMemory, uint32_
     TagL2 = address >> 14; // log2(L2_SIZE / 2) = 14 OR 8 + 6 = 14
 
     CacheLine *Line = &CacheInfoL2.line[indexL2];
+    CacheLine *Line2 = &CacheInfoL2.line[indexL2 + L2_LINES / 2];
 
 
-    if (!Line->Valid || Line->Tag != TagL2)
+    if ((!Line->Valid || Line->Tag != TagL2) && (!Line2->Valid || Line2->Tag != TagL2))
     { // if block not present - miss
 
         accessDRAM(AddressMemory, TempBlock, MODE_READ); // get new block from DRAM
-        
+        if(Line->Valid )
         if ((Line->Valid) && (Line->Dirty))
         {                                                                                   // line has dirty block
             AddressMemory = Line->Tag << 6;                                                 // get address of the block in memory
