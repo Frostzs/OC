@@ -48,10 +48,10 @@ void accessL1(uint32_t address, uint8_t *data, uint32_t mode) {
     {
         if (i < L1_LINES - 1)
         {
-            CacheInfoL1.line[i].Valid = 0;
+            CacheInfoL1.line[i].Valid = 0;  // Valid bits are all zero on init
         }
         CacheInfoL2.line[i].Valid = 0;
-        CacheInfoL2.line[i].Timebit = 0;
+        CacheInfoL2.line[i].Timebit = 0;  // Timebit are all 0 on init
     }
     CacheInfoL1.init = 1;
   }
@@ -106,8 +106,8 @@ void accessL2(uint32_t indexL1, uint32_t offset, uint32_t AddressMemory, uint32_
     indexL2 = AddressMemory & ((L2_SIZE / BLOCK_SIZE * 2) - 1); // mask is the number of lines (256) (1111 1111)
     TagL2 = address >> 14; // log2(L2_SIZE / 2) = 14 OR 8 + 6 = 14
 
-    CacheLine *Line = &CacheInfoL2.line[indexL2];
-    CacheLine *Line2 = &CacheInfoL2.line[indexL2 + L2_LINES / 2];
+    CacheLine *Line = &CacheInfoL2.line[indexL2]; // info about the first part of the set
+    CacheLine *Line2 = &CacheInfoL2.line[indexL2 + L2_LINES / 2]; // info about the last part of the set
 
 
     if ((!Line->Valid || Line->Tag != TagL2) && (!Line2->Valid || Line2->Tag != TagL2))
@@ -128,7 +128,7 @@ void accessL2(uint32_t indexL1, uint32_t offset, uint32_t AddressMemory, uint32_
         
 
 
-        if ((!Line->Valid) || (!Line->Timebit))
+        if ((!Line->Valid) || (!Line->Timebit)) // if line is not valid or timebit = 0 it will change
         {  
           memcpy(&(L2Cache[indexL2].lines_set[offset]), TempBlock,
                 BLOCK_SIZE); // copy new block to cache line
@@ -136,9 +136,10 @@ void accessL2(uint32_t indexL1, uint32_t offset, uint32_t AddressMemory, uint32_
           Line->Tag = TagL2;
           Line->Index = indexL2;
           Line->Dirty = 0;
+          Line->Timebit = 1;
           Line2->Timebit = 0;
         }
-        else if ((!Line2->Valid) || (!Line2->Timebit))
+        else if ((!Line2->Valid) || (!Line2->Timebit))  // Same but for the last part of the set
         {
           memcpy(&(L2Cache[indexL2].lines_set[BLOCK_SIZE - 1 + offset]), TempBlock,
                BLOCK_SIZE); // copy new block to cache line
@@ -146,6 +147,7 @@ void accessL2(uint32_t indexL1, uint32_t offset, uint32_t AddressMemory, uint32_
           Line2->Tag = TagL2;
           Line2->Index = indexL2;
           Line2->Dirty = 0;
+          Line2->Timebit = 1;
           Line->Timebit = 0;
         }
         
@@ -160,11 +162,11 @@ void accessL2(uint32_t indexL1, uint32_t offset, uint32_t AddressMemory, uint32_
 
     if (mode == MODE_READ)
     { // read data from cache line
-      if (Line->Tag == TagL2)
+      if (Line->Tag == TagL2) // read from the the cache on the first part of the set
       {
         memcpy(data, &(L2Cache[indexL2].lines_set[offset]), WORD_SIZE);
       }
-      else if (Line2->Tag == TagL2)
+      else if (Line2->Tag == TagL2) // read from the the cache on the second part of the set
       {
         memcpy(data, &(L2Cache[indexL2].lines_set[BLOCK_SIZE - 1 + offset]), WORD_SIZE);
       }
@@ -173,12 +175,12 @@ void accessL2(uint32_t indexL1, uint32_t offset, uint32_t AddressMemory, uint32_
 
     if (mode == MODE_WRITE)
     { // write data from cache line
-        if (Line->Tag == TagL2)
+        if (Line->Tag == TagL2) // write on the first part of the set
         {
           memcpy(&(L2Cache[indexL2].lines_set[offset]), data, WORD_SIZE);
           Line->Dirty = 1;
         }
-        else if (Line2->Tag == TagL2)
+        else if (Line2->Tag == TagL2) // write on the second part of the set
         {
           memcpy(&(L2Cache[indexL2].lines_set[BLOCK_SIZE - 1 + offset]), data, WORD_SIZE);
           Line2->Dirty = 1;
