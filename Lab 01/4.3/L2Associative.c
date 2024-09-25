@@ -165,10 +165,14 @@ void accessL2(uint32_t indexL1, uint32_t offset, uint32_t AddressMemory, uint32_
       if (Line->Tag == TagL2) // read from the the cache on the first part of the set
       {
         memcpy(data, &(L2Cache[indexL2].lines_set[offset]), WORD_SIZE);
+        Line2->Timebit = 0;
+        Line->Timebit = 1;
       }
       else if (Line2->Tag == TagL2) // read from the the cache on the second part of the set
       {
         memcpy(data, &(L2Cache[indexL2].lines_set[BLOCK_SIZE - 1 + offset]), WORD_SIZE);
+        Line2->Timebit = 1;
+        Line->Timebit = 0;
       }
         time += L2_READ_TIME;
     }
@@ -179,11 +183,16 @@ void accessL2(uint32_t indexL1, uint32_t offset, uint32_t AddressMemory, uint32_
         {
           memcpy(&(L2Cache[indexL2].lines_set[offset]), data, WORD_SIZE);
           Line->Dirty = 1;
+          Line2->Timebit = 0;
+          Line->Timebit = 1;
+          
         }
         else if (Line2->Tag == TagL2) // write on the second part of the set
         {
           memcpy(&(L2Cache[indexL2].lines_set[BLOCK_SIZE - 1 + offset]), data, WORD_SIZE);
           Line2->Dirty = 1;
+          Line2->Timebit = 1;
+          Line->Timebit = 0;
         }
         time += L2_WRITE_TIME;
     }
