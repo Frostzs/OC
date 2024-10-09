@@ -5,7 +5,7 @@
 #include <string.h>
 
 #define N 512
-#define CACHE_LINE_SIZE 1 // TODO: update this value
+#define CACHE_LINE_SIZE 64
 
 #define SUB_MATRIX_SIZE                                                        \
     (((CACHE_LINE_SIZE / sizeof(int16_t)) <= 0)                                \
@@ -79,6 +79,10 @@ int main() {
     if (PAPI_add_event(EventSet, PAPI_SR_INS) != PAPI_OK) {
         handle_error("add_event");
     }
+    /* Add L2 data cache misses to the Event Set*/
+    if (PAPI_add_event(EventSet, PAPI_L2_DCM) != PAPI_OK) {
+        handle_error("add_event");
+    }
 
     /* Reset the counting events in the Event Set */
     if (PAPI_reset(EventSet) != PAPI_OK) {
@@ -86,7 +90,7 @@ int main() {
     }
 
     /* Read the counting of events in the Event Set */
-    long long values[3];
+    long long values[4];
     if (PAPI_read(EventSet, values) != PAPI_OK) {
         handle_error("read");
     }
@@ -97,6 +101,8 @@ int main() {
             (double)(values[1]) / 1000000);
     fprintf(stdout, "After resetting counter 'PAPI_SR_INS' [x10^6]: %f\n",
             (double)(values[2]) / 1000000);
+    fprintf(stdout, "After resetting counter 'PAPI_L2_DCM' [x10^6]: %f\n",
+            (double)(values[3]) / 1000000);
 
     /* Start counting events in the Event Set */
     if (PAPI_start(EventSet) != PAPI_OK) {
@@ -134,6 +140,8 @@ int main() {
             (double)(values[1]) / 1000000);
     fprintf(stdout, "After stopping counter 'PAPI_SR_INS'  [x10^6]: %f\n",
             (double)(values[2]) / 1000000);
+    fprintf(stdout, "After stopping counter 'PAPI_L2_DCM'  [x10^6]: %f\n",
+            (double)(values[3]) / 1000000);
 
     fprintf(stdout, "Wall clock cycles [x10^6]: %f\n",
             (double)(end_cycles - start_cycles) / 1000000);
