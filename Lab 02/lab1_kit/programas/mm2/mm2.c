@@ -113,7 +113,7 @@ int main() {
 
 
     /* MATRIX MULTIPLICATION */
-    transpose(tmp, m2);
+    transpose(temp, mul2);
 
     multiply_matrices(mul1, mul2, res);
 
