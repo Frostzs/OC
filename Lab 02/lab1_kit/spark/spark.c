@@ -24,10 +24,12 @@ double get_elapsed(struct timespec const *start) {
 int main() {
     uint8_t *array = calloc(CACHE_MAX, sizeof(uint8_t));
 
-    fputs("size\tstride\telapsed(s)\tcycles\n", stdout);
+    fputs("size\tstride\telapsed(s)\tcycles\taccesses a[i]\n", stdout);
 
     for (size_t cache_size = CACHE_MIN; cache_size <= CACHE_MAX;
          cache_size = cache_size * 2) {
+        double mean = 0.0;
+        int total = 0;
         fprintf(stderr, "[LOG]: running with array of size %zu KiB\n",
                 cache_size >> 10);
         fflush(stderr);
@@ -46,9 +48,8 @@ int main() {
 
             size_t n_iterations = 0;
             /* ************************************************************** */
-            for (size_t repeat = 0; repeat < N_REPETITIONS * stride; repeat++) {
-                for (size_t index = 0; index < limit;
-                     index += stride, n_iterations++) {
+            for (ssize_t i = 10 * stride; i > 0; i--) {
+                for (size_t index = 0; index < limit; index += stride, n_iterations++) {
                     array[index] = array[index] + 1;
                 }
             }
@@ -63,9 +64,14 @@ int main() {
              *****************************************************************/
 
             /* Output to stdout */
-            fprintf(stdout, "%zu\t%zu\t%lf\t%zu\n", cache_size, stride,
-                    time_diff, cycle_count);
+            fprintf(stdout, "%zu\t%zu\t%lf\t%zu\t%zu\n", cache_size, stride,
+                    time_diff, cycle_count, n_iterations*2);
+            total += 1;
+            mean += time_diff;
         }
+        mean = mean/total;
+        fprintf(stdout, "Total Value:   %u\n", Total);
+        fprintf(stdout, "Mean Value:    %lf\n", mean);
     }
 
     return 0;
