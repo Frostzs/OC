@@ -70,7 +70,7 @@ int main() {
             mean += time_diff;
         }
         mean = mean/total;
-        fprintf(stdout, "Total Value:   %u\n", Total);
+        fprintf(stdout, "Total Value:   %u\n", total);
         fprintf(stdout, "Mean Value:    %lf\n", mean);
     }
 
